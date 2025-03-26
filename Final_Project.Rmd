@@ -1,0 +1,272 @@
+---
+title: "Final_Project"
+author: "Elliot Ly"
+date: "2024-09-15"
+output: 
+  html_document:
+    toc: true
+      toc_float: true
+      code_folding: show
+---
+
+
+## Introduction
+
+The Bike Sharing Dataset documents the usage of a bike-sharing system, focusing on daily and hourly rental counts over two years (2011-2012) in Washington D.C. This system automates bike rentals, enabling users to borrow and return bikes at different locations. The dataset not only tracks bike rentals but also includes various environmental and temporal features, such as temperature, weather conditions, and whether a given day is a holiday or a working day. This data is valuable because it reflects patterns in urban mobility and how factors like weather and holidays influence bike usage. For instance, the dataset contains normalized values for temperature, humidity, and wind speed, allowing for cross-comparisons under varying environmental conditions.
+
+The primary goal of this project involves predicting the number of bike rentals based on environmental conditions and finding the model that is best at predicting that. In this project, I will only be using the daily rental counts and not the hourly counts. We plan to first analyze the data by exploring the data itself through different plots and graphs, seeing if there's any correlation between variables and how they can useful in predicting total bike rentals. This information will help us in selecting the models which we will use on the training data and ultimately to help us choose the model to predict the testing data.
+
+Citation:
+Fanaee-T, H. (2013). Bike Sharing [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5W894.
+
+Link:
+https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset
+
+### Loading Packages
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(corrplot)
+library(ggthemes)
+library(kableExtra)
+library(tidymodels)
+library(ISLR)
+library(ISLR2)
+library(discrim)
+library(poissonreg)
+library(corrr)
+library(klaR)
+library(themis)
+library(janitor)
+library(vip)
+
+bike_day <- read_csv("/Users/elliotly/Desktop/Final_Project/data/day.csv")
+
+head(bike_day)
+```
+
+
+## EDA
+
+### Histogram of Daily Bike Rentals
+```{r}
+ggplot(bike_day, aes(x = cnt)) + 
+  geom_histogram(fill = "coral", color = "black") +
+  labs(title = "Distribution of Total Bike Rentals", x = "Total Rentals", y = "Frequency")
+```
+
+The histogram above shows the frequency of total bike rentals in a day shows how frequently different bike rental counts occur. Most days see between 3,000 to 6,000 rentals, with a few days having as many as 8,000 or more. The distribution is fairly normally distributed however there are two spikes in frequency at roughly 2,000 and 7,500 rentals. This could suggest perhaps certain variables like special occasions or weather are causing abnormal behavior. 
+
+
+### Scatterplot of Daily Bike Rentals and Temperature
+```{r}
+ggplot(bike_day, aes(x = temp, y = cnt)) + 
+  geom_point(alpha = 0.6, color = "darkgreen") +
+  labs(title = "Temperature vs. Bike Rentals", x = "Normalized Temperature", y = "Total Rentals") +
+  geom_smooth(method = "lm", color = "red", se = FALSE)
+```
+
+The scatterplot above shows temperature plotted against total rentals with the red line representing a linear fit. Looking at the graph, we can see a slight positive correlation between temperature and bike rentals. As temperature increases, so does the number of bike rentals, however there are exceptions to this trend with certain dots being very far from the linear fit line. But for the most part, the data seems to suggest that temperature is a strong predictor of bike rentals.
+
+### Boxplot of Bike Rentals by Season
+```{r}
+ggplot(bike_day, aes(x = factor(season), y = cnt, fill = factor(season))) + 
+  geom_boxplot() +
+  labs(title = "Bike Rentals by Season", x = "Season", y = "Total Rentals") +
+  scale_x_discrete(labels = c("Spring", "Summer", "Fall", "Winter")) +
+  theme_minimal()
+```
+
+The boxplots above display the relationship between bike rentals and seasons. Looking at the graph we can see that fall had the highest bike rental median followed by summer, winter and lastly spring. This is not exactly what was expected because of our previous discovery of the the positive correlation between temperature and bike rentals. However, the boxplots may be behaving this way because of the overlap in temperature between seasons. So the transition from winter to spring may actually represent more of winter's temperatures in spring and summer temperatures may be more represented in fall. 
+
+### Correlation Matix of Environmental Factors
+```{r}
+num_vars <- bike_day[, c("temp", "atemp", "hum", "windspeed", "cnt")]
+corr_matrix <- cor(num_vars)
+corrplot(corr_matrix, method = "circle", diag = F)
+```
+
+The correlation matrix highlights several key relationships between environmental factors and bike rentals. For example, temperature (temp) and apparent temperature (atemp) have strong positive correlations with bike rentals (cnt). On the other hand, humidity (hum) and windspeed (windspeed) show slight negative correlations, indicating that higher humidity and windspeed may reduce the likelihood of bike rentals. 
+
+### Boxplot of Bike Rentals by Weather Situation
+```{r}
+ggplot(bike_day, aes(x = factor(weathersit), y = cnt, fill = factor(weathersit))) + 
+  geom_boxplot() +
+  labs(title = "Bike Rentals by Weather Situation", 
+       x = "Weather Situation", 
+       y = "Total Rentals") +
+  scale_x_discrete(labels = c("Clear/Partly Cloudy", "Mist/Cloudy", "Light Rain/Snow")) +
+  theme_minimal()
+```
+
+The graph above compares boxplots of different weather situations clear/partly cloudy, misty/cloudy, and light rain/snow. The graph clearly shows a correlation between total bike rentals and weather situation as the more clear the weather is the more likely someone is to rent out a bike.
+
+## Missing Data
+
+After analyzing the raw data, there are no missing values in the bike share data that I will be using (specifically the bike share data by days). 
+
+
+## Splitting Data 
+```{r}
+set.seed(3435)
+bike_split <- initial_split(bike_day, strata = cnt) #stratifying outcome variable (which in this case is (cnt), the total bike rental count)
+bike_train <- training(bike_split)
+bike_test <- testing(bike_split)
+```
+
+I split all of the data between testing and training data, stratifying the total bike rental variable.
+
+## Recipe
+
+```{r}
+
+#Used all predictors except categorical ones like date (dteday) or record index (instant) as well as (casual) and (registered) distinction between bike users because only total count is relevant.
+
+bike_recipe <- recipe(cnt ~ season + yr + mnth + holiday + weekday + workingday + weathersit + temp + atemp + hum + windspeed, data = bike_train) %>% 
+  step_dummy(all_nominal_predictors())
+  
+```
+
+I used all predictors except categorical ones like date (dteday) or record index (instant) as well as (casual) and (registered) distinction between bike users because only total count is relevant.
+
+## Cross-Validation
+```{r}
+bike_folds <- vfold_cv(bike_train, v = 5, strata = cnt)
+```
+
+# 4 Model Fits
+
+### Linear Regression
+```{r}
+lm_model <- linear_reg() %>%
+  set_mode("regression") %>%
+  set_engine("lm")
+
+lm_wflow <- workflow() %>% 
+  add_model(lm_model) %>% 
+  add_recipe(bike_recipe)
+
+lm_fit <- fit(lm_wflow, bike_train)
+
+bike_metrics <- metric_set(rmse, rsq, mae)
+
+lm_predictions <- predict(lm_fit, bike_train) %>%
+  bind_cols(bike_train)
+
+lm_metrics <- lm_predictions %>%
+  metrics(truth = cnt, estimate = .pred)
+
+print(lm_metrics)
+```
+
+### K-Nearest Neighbors
+```{r}
+knn_model <- nearest_neighbor(neighbors = 7) %>%
+  set_engine("kknn") %>%
+  set_mode("regression")
+
+knn_workflow <- workflow() %>%
+  add_model(knn_model) %>%
+  add_recipe(bike_recipe)
+
+knn_fit <- fit(knn_workflow, bike_train)
+
+knn_predictions <- predict(knn_fit, bike_train) %>%
+  bind_cols(bike_train)
+
+knn_metrics <- knn_predictions %>%
+  metrics(truth = cnt, estimate = .pred)
+
+print(knn_metrics)
+```
+
+### Random Forest
+```{r}
+rf_reg_spec <- rand_forest(mtry = tune(), 
+                           trees = tune(), 
+                           min_n = tune()) %>%
+  set_engine("ranger", importance = "impurity") %>% 
+  set_mode("regression")
+
+rf_reg_wf <- workflow() %>% 
+  add_model(rf_reg_spec) %>% 
+  add_recipe(bike_recipe)
+
+rf_grid <- grid_regular(mtry(range = c(1, 5)), # Randomly choose only about half of the predictors to get a good representation of the variable but don't want to use too many and overfit the data
+                        trees(range = c(200, 600)),
+                        min_n(range = c(10, 20)),
+                        levels = 8)
+
+tune_reg <- tune_grid(
+  rf_reg_wf, 
+  resamples = bike_folds, 
+  grid = rf_grid
+)
+
+save(tune_reg, file = "tune_reg.rda")
+load("tune_reg.rda")
+
+autoplot(tune_reg) + theme_minimal()
+
+show_best(tune_reg, metric = "rmse", n = 1)
+```
+
+### Boosted Trees
+```{r}
+bt_reg_spec <- boost_tree(mtry = tune(), 
+                           trees = tune(), 
+                           learn_rate = tune()) %>%
+  set_engine("xgboost") %>% 
+  set_mode("regression")
+
+bt_reg_wf <- workflow() %>% 
+  add_model(bt_reg_spec) %>% 
+  add_recipe(bike_recipe)
+
+bt_grid <- grid_regular(mtry(range = c(1, 5)), # Randomly choose only about half of the predictors to get a good representation of the variable but don't want to use too many and overfit the data
+                        trees(range = c(200, 500)), # Use a good amount of trees but not too many because it doesn't 
+                        learn_rate(range = c(-10, -1)),
+                        levels = 8)
+
+tune_bt_reg <- tune_grid(
+  bt_reg_wf, 
+  resamples = bike_folds, 
+  grid = bt_grid
+)
+
+save(tune_bt_reg, file = "tune_bt_reg.rda")
+load("tune_bt_reg.rda")
+
+autoplot(tune_bt_reg) + theme_minimal()
+
+show_best(tune_bt_reg, metric = "rmse", n = 1)
+```
+
+After looking at all of the RMSE of the *training* models, the following models are ranked below:
+
+1. K-Nearest Neighbors
+2. Boosted Tree
+3. Random Forest
+4. Linear Regression
+
+The KNN-Neighbors model is the clear cut winner when testing the RMSE of the training data when compared to the other models. It has a lowest RMSE of the models followed by the boosted tree and random forest and then the linear regression model was last. This could suggest that the relationship of the data is not quite linear but not too complex either.
+
+# Best Model For Predicting Testing Data (KNN)
+```{r}
+bike_metrics <- metric_set(rmse, rsq, mae)
+
+knn_predictions <- predict(knn_fit, bike_test) %>%
+  bind_cols(bike_test)
+
+knn_metrics <- knn_predictions %>%
+  metrics(truth = cnt, estimate = .pred)
+
+print(knn_metrics)
+```
+
+# Conclusion
+When looking at the best model (in terms of RMSE) at predicting the total count of bike rentals for the day it was thought that the K-Nearest Neighbors was the best model based off of the training data. It had a RMSE of 495 which was the lowest of all the models as well as a R^2 value of 0.939 which means that 93.9% of the variance is accounted for by the model which is pretty good. However, we see that when we ran the model with the testing data, the model did a worse job than with the training data. The RMSE increased to 729 and the R^2 decreased to 0.862 (86.2%).
+
+The model didn't perform quite as well on the testing data as compared to the training data which could suggest that a slightly more complex model may have perform better on the data. The next best models like the random forest and boosted trees maybe should be used on the testing data to get a better understanding of the data in the future.  A model that is between a linear model and a complex model I think would be best for this dataset. Something like a GAM or QDA may more accurately predict the total count of bikes. Also maybe making a change to the recipe could improve the predicting ability of the model. However, overall, the KNN model did fairly well all things considered when accounting for the it's ability to account for the variance in the model and having a moderate RMSE. 
