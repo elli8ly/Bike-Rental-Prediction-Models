@@ -251,7 +251,7 @@ After looking at all of the RMSE of the *training* models, the following models 
 3. Random Forest
 4. Linear Regression
 
-The KNN-Neighbors model is the clear cut winner when testing the RMSE of the training data when compared to the other models. It has a lowest RMSE of the models followed by the boosted tree and random forest and then the linear regression model was last. This could suggest that the relationship of the data is not quite linear but not too complex either.
+The KNN-Neighbors model is the clear cut winner when testing the RMSE of the training data when compared to the other models. It has the lowest RMSE of the models followed by the boosted tree and random forest and finally the linear regression model. This could suggest that the relationship of the data is not quite linear but not too complex either.
 
 # Best Model For Predicting Testing Data (KNN)
 ```{r}
@@ -267,6 +267,6 @@ print(knn_metrics)
 ```
 
 # Conclusion
-When looking at the best model (in terms of RMSE) at predicting the total count of bike rentals for the day it was thought that the K-Nearest Neighbors was the best model based off of the training data. It had a RMSE of 495 which was the lowest of all the models as well as a R^2 value of 0.939 which means that 93.9% of the variance is accounted for by the model which is pretty good. However, we see that when we ran the model with the testing data, the model did a worse job than with the training data. The RMSE increased to 729 and the R^2 decreased to 0.862 (86.2%).
+When looking at the best model (in terms of RMSE) at predicting the total count of bike rentals for the day it was thought that the K-Nearest Neighbors was the best model based off of the training data. It had a RMSE of 495 which was the lowest of all the models as well as a R^2 value of 0.939 which means that 93.9% of the variance is accounted for by the model which is pretty good. However, we see that when we ran the model with the testing data, the model did worse with a RMSE increased to 729 and the R^2 decreased to 0.862 (86.2%).
 
 The model didn't perform quite as well on the testing data as compared to the training data which could suggest that a slightly more complex model may have perform better on the data. The next best models like the random forest and boosted trees maybe should be used on the testing data to get a better understanding of the data in the future.  A model that is between a linear model and a complex model I think would be best for this dataset. Something like a GAM or QDA may more accurately predict the total count of bikes. Also maybe making a change to the recipe could improve the predicting ability of the model. However, overall, the KNN model did fairly well all things considered when accounting for the it's ability to account for the variance in the model and having a moderate RMSE. 
