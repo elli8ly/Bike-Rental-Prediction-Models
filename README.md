@@ -1,4 +1,4 @@
-# Bike-Sharing-Prediction-Modeling
+# Bike-Sharing-Predictive-Modeling
 
 **Author:** Elliot Ly
 
