@@ -1,4 +1,4 @@
-# Bike-Rental-Prediction-Modeling
+# Bike-Sharing-Prediction-Modeling
 
 **Author:** Elliot Ly
 
