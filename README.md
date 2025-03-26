@@ -1,4 +1,4 @@
-# Bike-Rental-Predection-Models
+# Bike-Rental-Prediction-Models
 In this project, I developed a predictive model for bike rentals by exploring a variety of machine learning techniques. The goal was to forecast the number of bike rentals based on historical usage data along with factors such as weather conditions, time of day, and seasonal trends.
 
 Key Techniques Used:
